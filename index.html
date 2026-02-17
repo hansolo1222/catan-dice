@@ -7,54 +7,130 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0f23">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
 <title>Dice</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0f0f23;color:#fff;font-family:-apple-system,system-ui,sans-serif;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-.dice-area{display:flex;gap:24px;margin-bottom:24px;cursor:pointer}
-.die{width:90px;height:90px;background:#fff;border-radius:16px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:14px;gap:2px;box-shadow:0 6px 20px rgba(0,0,0,.4);transition:transform .1s}
+body{background:#0f0f23;color:#fff;font-family:-apple-system,system-ui,sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,.1);flex-shrink:0}
+.tab{flex:1;padding:14px 0;text-align:center;font-size:14px;font-weight:600;color:#555;letter-spacing:.5px;cursor:pointer;transition:all .2s}
+.tab.active{color:#fff;border-bottom:2px solid #6c8cff}
+
+/* Tab content */
+.tab-content{display:none;flex:1;flex-direction:column;overflow:hidden}
+.tab-content.active{display:flex}
+
+/* Dice tab */
+.dice-tab{align-items:center;justify-content:center;position:relative}
+.dice-controls{position:absolute;top:16px;display:flex;gap:12px;align-items:center}
+.dice-controls button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dice-controls span{font-size:14px;color:#888;min-width:60px;text-align:center}
+.worker-toggle{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;padding:6px 12px;border-radius:20px;font-size:13px;cursor:pointer}
+.worker-toggle.active{background:rgba(100,140,255,.2);border-color:rgba(100,140,255,.4)}
+
+/* Construction worker */
+.worker-container{height:120px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px;position:relative}
+.worker{font-size:64px;transition:transform .1s;transform-origin:bottom center}
+.worker.throwing{animation:throwAnim .6s ease-out}
+@keyframes throwAnim{
+  0%{transform:rotate(0) translateY(0)}
+  20%{transform:rotate(-20deg) translateY(-10px)}
+  40%{transform:rotate(15deg) translateY(-5px) scaleX(-1)}
+  60%{transform:rotate(-5deg) translateY(0)}
+  100%{transform:rotate(0) translateY(0)}
+}
+.worker-label{font-size:10px;color:#555;text-align:center;margin-top:2px;letter-spacing:1px}
+
+/* Dice area */
+.dice-area{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-bottom:20px;cursor:pointer;padding:0 20px}
+.die{width:80px;height:80px;background:#fff;border-radius:14px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:12px;gap:2px;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 .die.rolling{animation:shake .5s ease-in-out}
 .pip{width:100%;aspect-ratio:1;border-radius:50%;background:transparent}
 .pip.on{background:#0f0f23}
 @keyframes shake{0%{transform:rotate(0) scale(1)}15%{transform:rotate(-15deg) scale(.9)}30%{transform:rotate(12deg) scale(1.05)}45%{transform:rotate(-8deg) scale(.95)}60%{transform:rotate(5deg) scale(1.02)}75%{transform:rotate(-3deg) scale(.98)}100%{transform:rotate(0) scale(1)}}
-.sum{font-size:72px;font-weight:800;margin-bottom:8px;min-height:86px;opacity:.9}
-.label{font-size:14px;color:#666;margin-bottom:24px;letter-spacing:1px;text-transform:uppercase}
-.history{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:320px;margin-bottom:16px;min-height:32px}
-.history span{background:rgba(255,255,255,.08);padding:4px 10px;border-radius:8px;font-size:14px;color:#999}
-.stats-btn{background:rgba(255,255,255,.06);border:none;color:#888;padding:8px 16px;border-radius:12px;font-size:13px;cursor:pointer;margin-bottom:12px}
-.stats{display:none;background:rgba(255,255,255,.04);border-radius:12px;padding:12px 16px;font-size:12px;color:#777;max-width:300px;text-align:center;line-height:1.8}
-.stats.show{display:block}
-.music-btn{position:fixed;top:16px;right:16px;background:rgba(255,255,255,.08);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer}
+.sum{font-size:64px;font-weight:800;opacity:.9;margin-bottom:8px}
+.tap-hint{color:#444;font-size:12px;letter-spacing:1px}
+.music-btn{position:absolute;bottom:16px;right:16px;background:rgba(255,255,255,.08);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer}
 .music-btn.active{background:rgba(100,140,255,.3)}
-.tap-hint{color:#444;font-size:13px;position:fixed;bottom:20px}
-.rolls-label{color:#555;font-size:11px;margin-bottom:6px;letter-spacing:1px}
+
+/* History tab */
+.history-tab{padding:20px;overflow-y:auto}
+.history-tab h2{font-size:16px;color:#888;margin-bottom:16px;letter-spacing:1px;font-weight:500}
+.roll-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(255,255,255,.04);border-radius:12px;margin-bottom:8px}
+.roll-item .roll-num{color:#555;font-size:12px;width:30px}
+.roll-item .roll-dice{color:#ccc;font-size:15px;flex:1}
+.roll-item .roll-sum{font-size:22px;font-weight:700;color:#fff;min-width:40px;text-align:right}
+.no-rolls{color:#444;text-align:center;margin-top:40px;font-size:14px}
+
+/* Stats tab */
+.stats-tab{padding:20px;overflow-y:auto}
+.stats-tab h2{font-size:16px;color:#888;margin-bottom:16px;letter-spacing:1px;font-weight:500}
+.stat-row{display:flex;align-items:center;margin-bottom:8px;gap:8px}
+.stat-label{width:28px;text-align:right;font-size:14px;color:#888;font-weight:600}
+.stat-bar-bg{flex:1;height:24px;background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden;position:relative}
+.stat-bar{height:100%;background:linear-gradient(90deg,#4a6cf7,#6c8cff);border-radius:6px;transition:width .3s}
+.stat-bar.seven{background:linear-gradient(90deg,#f74a4a,#ff6c6c)}
+.stat-count{width:50px;font-size:12px;color:#666;text-align:right}
+.stat-total{text-align:center;color:#555;font-size:13px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)}
 </style>
 </head>
 <body>
 
-<button class="music-btn" id="musicBtn" title="Toggle Jazz">🎵</button>
-
-<div class="dice-area" id="diceArea">
-  <div class="die" id="die1"><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
-  <div class="die" id="die2"><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+<div class="tabs">
+  <div class="tab active" data-tab="dice">🎲 Dice</div>
+  <div class="tab" data-tab="history">📋 History</div>
+  <div class="tab" data-tab="stats">📊 Stats</div>
 </div>
 
-<div class="sum" id="sum"></div>
-<div class="label">tap anywhere to roll</div>
+<div class="tab-content dice-tab active" id="diceTab">
+  <div class="dice-controls">
+    <button id="removeDie">−</button>
+    <span id="diceCount">2 dice</span>
+    <button id="addDie">+</button>
+  </div>
+  <button class="worker-toggle" id="workerToggle">👷 Thrower</button>
+  <div class="worker-container" id="workerContainer" style="display:none">
+    <div>
+      <div class="worker" id="worker">👷</div>
+      <div class="worker-label">HARD HAT GARY</div>
+    </div>
+  </div>
+  <div class="dice-area" id="diceArea"></div>
+  <div class="sum" id="sum"></div>
+  <div class="tap-hint">TAP ANYWHERE TO ROLL</div>
+  <button class="music-btn" id="musicBtn">🎵</button>
+</div>
 
-<div class="rolls-label">HISTORY</div>
-<div class="history" id="history"></div>
+<div class="tab-content history-tab" id="historyTab">
+  <h2>ROLL HISTORY</h2>
+  <div id="historyList"><div class="no-rolls">No rolls yet — go roll some dice!</div></div>
+</div>
 
-<button class="stats-btn" id="statsBtn">📊 Stats</button>
-<div class="stats" id="stats"></div>
-
-<div class="tap-hint">🎲 Catan Dice</div>
+<div class="tab-content stats-tab" id="statsTab">
+  <h2>ROLL DISTRIBUTION</h2>
+  <div id="statsBars"></div>
+  <div class="stat-total" id="statsTotal">No rolls yet</div>
+</div>
 
 <script>
 const pipMap={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
-const history=[];const dist={2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0};
-let rolling=false;let jazzPlaying=false;let jazzCtx,jazzInterval;
+let numDice=2;let rolling=false;let showWorker=false;
+let jazzPlaying=false;let jazzCtx,jazzInterval;
+const history=[];const dist={};
+
+// Init dice
+function createDice(){
+  const area=document.getElementById('diceArea');
+  area.innerHTML='';
+  for(let i=0;i<numDice;i++){
+    const d=document.createElement('div');d.className='die';d.dataset.idx=i;
+    for(let j=0;j<9;j++){const p=document.createElement('div');p.className='pip';d.appendChild(p);}
+    area.appendChild(d);
+    setDie(d,Math.ceil(Math.random()*6));
+  }
+  document.getElementById('diceCount').textContent=numDice+' dic'+(numDice===1?'e':'e');
+}
 
 function setDie(el,val){
   const pips=el.querySelectorAll('.pip');
@@ -66,77 +142,100 @@ function playRollSound(){
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
     for(let i=0;i<8;i++){
       const t=ctx.currentTime+i*0.06;
-      const osc=ctx.createOscillator();
-      const gain=ctx.createGain();
-      osc.type='square';
-      osc.frequency.value=200+Math.random()*800;
-      gain.gain.setValueAtTime(0.08,t);
-      gain.gain.exponentialRampToValueAtTime(0.001,t+0.05);
-      osc.connect(gain);gain.connect(ctx.destination);
-      osc.start(t);osc.stop(t+0.05);
+      const osc=ctx.createOscillator();const gain=ctx.createGain();
+      osc.type='square';osc.frequency.value=200+Math.random()*800;
+      gain.gain.setValueAtTime(0.08,t);gain.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+      osc.connect(gain);gain.connect(ctx.destination);osc.start(t);osc.stop(t+0.05);
     }
-    // final thud
     const t2=ctx.currentTime+0.5;
-    const osc2=ctx.createOscillator();
-    const gain2=ctx.createGain();
+    const osc2=ctx.createOscillator();const gain2=ctx.createGain();
     osc2.type='sine';osc2.frequency.value=80;
-    gain2.gain.setValueAtTime(0.15,t2);
-    gain2.gain.exponentialRampToValueAtTime(0.001,t2+0.15);
-    osc2.connect(gain2);gain2.connect(ctx.destination);
-    osc2.start(t2);osc2.stop(t2+0.15);
+    gain2.gain.setValueAtTime(0.15,t2);gain2.gain.exponentialRampToValueAtTime(0.001,t2+0.15);
+    osc2.connect(gain2);gain2.connect(ctx.destination);osc2.start(t2);osc2.stop(t2+0.15);
   }catch(e){}
 }
 
 function roll(){
   if(rolling)return;rolling=true;
-  const d1=document.getElementById('die1');
-  const d2=document.getElementById('die2');
-  d1.classList.add('rolling');d2.classList.add('rolling');
+  const dice=document.querySelectorAll('.die');
+  dice.forEach(d=>d.classList.add('rolling'));
   playRollSound();
   if(navigator.vibrate)navigator.vibrate(50);
   
+  if(showWorker){
+    const w=document.getElementById('worker');
+    w.classList.remove('throwing');void w.offsetWidth;w.classList.add('throwing');
+  }
+  
   let flicks=0;const flickInterval=setInterval(()=>{
-    setDie(d1,Math.ceil(Math.random()*6));
-    setDie(d2,Math.ceil(Math.random()*6));
+    dice.forEach(d=>setDie(d,Math.ceil(Math.random()*6)));
     flicks++;
     if(flicks>8){
       clearInterval(flickInterval);
-      const v1=Math.ceil(Math.random()*6);
-      const v2=Math.ceil(Math.random()*6);
-      setDie(d1,v1);setDie(d2,v2);
-      const s=v1+v2;
+      const vals=[];
+      dice.forEach(d=>{const v=Math.ceil(Math.random()*6);vals.push(v);setDie(d,v);d.classList.remove('rolling')});
+      const s=vals.reduce((a,b)=>a+b,0);
       document.getElementById('sum').textContent=s;
-      history.unshift(`${v1}+${v2}=${s}`);
-      if(history.length>10)history.pop();
-      dist[s]++;
+      const entry={vals:[...vals],sum:s,time:new Date()};
+      history.unshift(entry);
+      dist[s]=(dist[s]||0)+1;
       renderHistory();renderStats();
-      d1.classList.remove('rolling');d2.classList.remove('rolling');
       rolling=false;
     }
   },60);
 }
 
 function renderHistory(){
-  document.getElementById('history').innerHTML=history.map(h=>`<span>${h}</span>`).join('');
+  const el=document.getElementById('historyList');
+  if(!history.length){el.innerHTML='<div class="no-rolls">No rolls yet</div>';return}
+  el.innerHTML=history.map((h,i)=>`<div class="roll-item"><span class="roll-num">#${history.length-i}</span><span class="roll-dice">${h.vals.join(' + ')}</span><span class="roll-sum">${h.sum}</span></div>`).join('');
 }
 
 function renderStats(){
-  const total=Object.values(dist).reduce((a,b)=>a+b,0);
-  if(!total){document.getElementById('stats').innerHTML='No rolls yet';return}
-  let html='<b>Roll Distribution</b><br>';
-  for(let i=2;i<=12;i++){
-    const pct=total?((dist[i]/total)*100).toFixed(0):'0';
-    const bar='█'.repeat(Math.round(dist[i]/total*20));
-    html+=`${i}: ${bar} ${dist[i]} (${pct}%)<br>`;
+  const total=history.length;
+  const el=document.getElementById('statsBars');
+  const totalEl=document.getElementById('statsTotal');
+  if(!total){el.innerHTML='';totalEl.textContent='No rolls yet';return}
+  const maxSum=numDice*6;const minSum=numDice;
+  const maxCount=Math.max(...Object.values(dist),1);
+  let html='';
+  for(let i=minSum;i<=maxSum;i++){
+    const c=dist[i]||0;const pct=((c/maxCount)*100).toFixed(0);
+    const freqPct=total?((c/total)*100).toFixed(0):'0';
+    const isSeven=i===7;
+    html+=`<div class="stat-row"><span class="stat-label">${i}</span><div class="stat-bar-bg"><div class="stat-bar${isSeven?' seven':''}" style="width:${pct}%"></div></div><span class="stat-count">${c} (${freqPct}%)</span></div>`;
   }
-  html+=`<br>Total: ${total} rolls`;
-  if(dist[7])html+=`<br>🎯 Sevens: ${dist[7]} (${((dist[7]/total)*100).toFixed(0)}%)`;
-  document.getElementById('stats').innerHTML=html;
+  el.innerHTML=html;
+  const sevens=dist[7]||0;
+  totalEl.innerHTML=`${total} total rolls`+(sevens?` · 🎯 ${sevens} sevens (${((sevens/total)*100).toFixed(0)}%)`:'');
 }
 
-document.getElementById('statsBtn').onclick=()=>{
-  document.getElementById('stats').classList.toggle('show');
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab+'Tab').classList.add('active');
+  }
+});
+
+// Dice count
+document.getElementById('addDie').onclick=(e)=>{e.stopPropagation();if(numDice<8){numDice++;createDice()}};
+document.getElementById('removeDie').onclick=(e)=>{e.stopPropagation();if(numDice>1){numDice--;createDice()}};
+
+// Worker toggle
+document.getElementById('workerToggle').onclick=(e)=>{
+  e.stopPropagation();showWorker=!showWorker;
+  document.getElementById('workerContainer').style.display=showWorker?'flex':'none';
+  document.getElementById('workerToggle').classList.toggle('active',showWorker);
 };
+
+// Roll on tap
+document.getElementById('diceTab').addEventListener('click',(e)=>{
+  if(e.target.closest('.dice-controls')||e.target.closest('.music-btn')||e.target.closest('.worker-toggle'))return;
+  roll();
+});
 
 // Jazz
 function startJazz(){
@@ -146,43 +245,23 @@ function startJazz(){
   function playChord(){
     const chord=chords[ci%chords.length];ci++;
     chord.forEach(freq=>{
-      const osc=jazzCtx.createOscillator();
-      const gain=jazzCtx.createGain();
+      const osc=jazzCtx.createOscillator();const gain=jazzCtx.createGain();
       osc.type='sine';osc.frequency.value=freq;
       gain.gain.setValueAtTime(0.02,jazzCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001,jazzCtx.currentTime+2.8);
-      osc.connect(gain);gain.connect(jazzCtx.destination);
-      osc.start();osc.stop(jazzCtx.currentTime+3);
+      osc.connect(gain);gain.connect(jazzCtx.destination);osc.start();osc.stop(jazzCtx.currentTime+3);
     });
   }
-  playChord();
-  jazzInterval=setInterval(playChord,3000);
-  jazzPlaying=true;
+  playChord();jazzInterval=setInterval(playChord,3000);jazzPlaying=true;
   document.getElementById('musicBtn').classList.add('active');
 }
-
 function stopJazz(){
-  if(jazzInterval)clearInterval(jazzInterval);
-  if(jazzCtx)jazzCtx.close();
-  jazzPlaying=false;
-  document.getElementById('musicBtn').classList.remove('active');
+  if(jazzInterval)clearInterval(jazzInterval);if(jazzCtx)jazzCtx.close();
+  jazzPlaying=false;document.getElementById('musicBtn').classList.remove('active');
 }
+document.getElementById('musicBtn').onclick=(e)=>{e.stopPropagation();jazzPlaying?stopJazz():startJazz()};
 
-document.getElementById('musicBtn').onclick=(e)=>{
-  e.stopPropagation();
-  jazzPlaying?stopJazz():startJazz();
-};
-
-document.body.addEventListener('click',(e)=>{
-  if(e.target.closest('.stats-btn')||e.target.closest('.music-btn'))return;
-  roll();
-});
-
-// Init dice display
-setDie(document.getElementById('die1'),1);
-setDie(document.getElementById('die2'),1);
-
-// Register SW
+createDice();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
