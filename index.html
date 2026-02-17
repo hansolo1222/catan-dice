@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f0f23">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Dice</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f0f23;color:#fff;font-family:-apple-system,system-ui,sans-serif;height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.dice-area{display:flex;gap:24px;margin-bottom:24px;cursor:pointer}
+.die{width:90px;height:90px;background:#fff;border-radius:16px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:14px;gap:2px;box-shadow:0 6px 20px rgba(0,0,0,.4);transition:transform .1s}
+.die.rolling{animation:shake .5s ease-in-out}
+.pip{width:100%;aspect-ratio:1;border-radius:50%;background:transparent}
+.pip.on{background:#0f0f23}
+@keyframes shake{0%{transform:rotate(0) scale(1)}15%{transform:rotate(-15deg) scale(.9)}30%{transform:rotate(12deg) scale(1.05)}45%{transform:rotate(-8deg) scale(.95)}60%{transform:rotate(5deg) scale(1.02)}75%{transform:rotate(-3deg) scale(.98)}100%{transform:rotate(0) scale(1)}}
+.sum{font-size:72px;font-weight:800;margin-bottom:8px;min-height:86px;opacity:.9}
+.label{font-size:14px;color:#666;margin-bottom:24px;letter-spacing:1px;text-transform:uppercase}
+.history{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:320px;margin-bottom:16px;min-height:32px}
+.history span{background:rgba(255,255,255,.08);padding:4px 10px;border-radius:8px;font-size:14px;color:#999}
+.stats-btn{background:rgba(255,255,255,.06);border:none;color:#888;padding:8px 16px;border-radius:12px;font-size:13px;cursor:pointer;margin-bottom:12px}
+.stats{display:none;background:rgba(255,255,255,.04);border-radius:12px;padding:12px 16px;font-size:12px;color:#777;max-width:300px;text-align:center;line-height:1.8}
+.stats.show{display:block}
+.music-btn{position:fixed;top:16px;right:16px;background:rgba(255,255,255,.08);border:none;color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer}
+.music-btn.active{background:rgba(100,140,255,.3)}
+.tap-hint{color:#444;font-size:13px;position:fixed;bottom:20px}
+.rolls-label{color:#555;font-size:11px;margin-bottom:6px;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<button class="music-btn" id="musicBtn" title="Toggle Jazz">🎵</button>
+
+<div class="dice-area" id="diceArea">
+  <div class="die" id="die1"><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+  <div class="die" id="die2"><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+</div>
+
+<div class="sum" id="sum"></div>
+<div class="label">tap anywhere to roll</div>
+
+<div class="rolls-label">HISTORY</div>
+<div class="history" id="history"></div>
+
+<button class="stats-btn" id="statsBtn">📊 Stats</button>
+<div class="stats" id="stats"></div>
+
+<div class="tap-hint">🎲 Catan Dice</div>
+
+<script>
+const pipMap={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+const history=[];const dist={2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0};
+let rolling=false;let jazzPlaying=false;let jazzCtx,jazzInterval;
+
+function setDie(el,val){
+  const pips=el.querySelectorAll('.pip');
+  pips.forEach((p,i)=>{p.classList.toggle('on',pipMap[val].includes(i))});
+}
+
+function playRollSound(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    for(let i=0;i<8;i++){
+      const t=ctx.currentTime+i*0.06;
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='square';
+      osc.frequency.value=200+Math.random()*800;
+      gain.gain.setValueAtTime(0.08,t);
+      gain.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.start(t);osc.stop(t+0.05);
+    }
+    // final thud
+    const t2=ctx.currentTime+0.5;
+    const osc2=ctx.createOscillator();
+    const gain2=ctx.createGain();
+    osc2.type='sine';osc2.frequency.value=80;
+    gain2.gain.setValueAtTime(0.15,t2);
+    gain2.gain.exponentialRampToValueAtTime(0.001,t2+0.15);
+    osc2.connect(gain2);gain2.connect(ctx.destination);
+    osc2.start(t2);osc2.stop(t2+0.15);
+  }catch(e){}
+}
+
+function roll(){
+  if(rolling)return;rolling=true;
+  const d1=document.getElementById('die1');
+  const d2=document.getElementById('die2');
+  d1.classList.add('rolling');d2.classList.add('rolling');
+  playRollSound();
+  if(navigator.vibrate)navigator.vibrate(50);
+  
+  let flicks=0;const flickInterval=setInterval(()=>{
+    setDie(d1,Math.ceil(Math.random()*6));
+    setDie(d2,Math.ceil(Math.random()*6));
+    flicks++;
+    if(flicks>8){
+      clearInterval(flickInterval);
+      const v1=Math.ceil(Math.random()*6);
+      const v2=Math.ceil(Math.random()*6);
+      setDie(d1,v1);setDie(d2,v2);
+      const s=v1+v2;
+      document.getElementById('sum').textContent=s;
+      history.unshift(`${v1}+${v2}=${s}`);
+      if(history.length>10)history.pop();
+      dist[s]++;
+      renderHistory();renderStats();
+      d1.classList.remove('rolling');d2.classList.remove('rolling');
+      rolling=false;
+    }
+  },60);
+}
+
+function renderHistory(){
+  document.getElementById('history').innerHTML=history.map(h=>`<span>${h}</span>`).join('');
+}
+
+function renderStats(){
+  const total=Object.values(dist).reduce((a,b)=>a+b,0);
+  if(!total){document.getElementById('stats').innerHTML='No rolls yet';return}
+  let html='<b>Roll Distribution</b><br>';
+  for(let i=2;i<=12;i++){
+    const pct=total?((dist[i]/total)*100).toFixed(0):'0';
+    const bar='█'.repeat(Math.round(dist[i]/total*20));
+    html+=`${i}: ${bar} ${dist[i]} (${pct}%)<br>`;
+  }
+  html+=`<br>Total: ${total} rolls`;
+  if(dist[7])html+=`<br>🎯 Sevens: ${dist[7]} (${((dist[7]/total)*100).toFixed(0)}%)`;
+  document.getElementById('stats').innerHTML=html;
+}
+
+document.getElementById('statsBtn').onclick=()=>{
+  document.getElementById('stats').classList.toggle('show');
+};
+
+// Jazz
+function startJazz(){
+  jazzCtx=new(window.AudioContext||window.webkitAudioContext)();
+  const chords=[[261,329,392],[293,369,440],[329,415,493],[349,440,523],[261,329,392],[293,369,440],[349,440,523],[329,415,493]];
+  let ci=0;
+  function playChord(){
+    const chord=chords[ci%chords.length];ci++;
+    chord.forEach(freq=>{
+      const osc=jazzCtx.createOscillator();
+      const gain=jazzCtx.createGain();
+      osc.type='sine';osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.02,jazzCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,jazzCtx.currentTime+2.8);
+      osc.connect(gain);gain.connect(jazzCtx.destination);
+      osc.start();osc.stop(jazzCtx.currentTime+3);
+    });
+  }
+  playChord();
+  jazzInterval=setInterval(playChord,3000);
+  jazzPlaying=true;
+  document.getElementById('musicBtn').classList.add('active');
+}
+
+function stopJazz(){
+  if(jazzInterval)clearInterval(jazzInterval);
+  if(jazzCtx)jazzCtx.close();
+  jazzPlaying=false;
+  document.getElementById('musicBtn').classList.remove('active');
+}
+
+document.getElementById('musicBtn').onclick=(e)=>{
+  e.stopPropagation();
+  jazzPlaying?stopJazz():startJazz();
+};
+
+document.body.addEventListener('click',(e)=>{
+  if(e.target.closest('.stats-btn')||e.target.closest('.music-btn'))return;
+  roll();
+});
+
+// Init dice display
+setDie(document.getElementById('die1'),1);
+setDie(document.getElementById('die2'),1);
+
+// Register SW
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
