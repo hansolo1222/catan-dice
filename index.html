@@ -137,21 +137,33 @@ function setDie(el,val){
   pips.forEach((p,i)=>{p.classList.toggle('on',pipMap[val].includes(i))});
 }
 
+// Real dice sounds — 3 variations, overlaid for multiple dice
+const diceSounds=['sounds/dice1.mp3','sounds/dice2.mp3','sounds/dice3.mp3'];
+const audioCache=[];
+let soundsLoaded=false;
+
+function preloadSounds(){
+  diceSounds.forEach((src,i)=>{
+    const a=new Audio(src);a.preload='auto';audioCache[i]=a;
+  });
+  soundsLoaded=true;
+}
+
 function playRollSound(){
+  if(!soundsLoaded)preloadSounds();
   try{
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    for(let i=0;i<8;i++){
-      const t=ctx.currentTime+i*0.06;
-      const osc=ctx.createOscillator();const gain=ctx.createGain();
-      osc.type='square';osc.frequency.value=200+Math.random()*800;
-      gain.gain.setValueAtTime(0.08,t);gain.gain.exponentialRampToValueAtTime(0.001,t+0.05);
-      osc.connect(gain);gain.connect(ctx.destination);osc.start(t);osc.stop(t+0.05);
+    // Play one sound per die, staggered slightly for overlapping effect
+    for(let i=0;i<numDice;i++){
+      const idx=(i)%diceSounds.length;
+      const delay=i*80; // stagger by 80ms per die
+      setTimeout(()=>{
+        const a=audioCache[idx].cloneNode();
+        a.volume=Math.min(1,0.7+Math.random()*0.3);
+        // Slight playback rate variation for natural feel
+        a.playbackRate=0.9+Math.random()*0.2;
+        a.play().catch(()=>{});
+      },delay);
     }
-    const t2=ctx.currentTime+0.5;
-    const osc2=ctx.createOscillator();const gain2=ctx.createGain();
-    osc2.type='sine';osc2.frequency.value=80;
-    gain2.gain.setValueAtTime(0.15,t2);gain2.gain.exponentialRampToValueAtTime(0.001,t2+0.15);
-    osc2.connect(gain2);gain2.connect(ctx.destination);osc2.start(t2);osc2.stop(t2+0.15);
   }catch(e){}
 }
 
@@ -262,6 +274,7 @@ function stopJazz(){
 document.getElementById('musicBtn').onclick=(e)=>{e.stopPropagation();jazzPlaying?stopJazz():startJazz()};
 
 createDice();
+preloadSounds();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
