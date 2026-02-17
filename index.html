@@ -119,6 +119,42 @@ let numDice=2;let rolling=false;let showWorker=false;
 let jazzPlaying=false;let jazzCtx,jazzInterval;
 const history=[];const dist={};
 
+// 🤫 Corner cheat: tap TL, TR, BR, BL (clockwise) → next rolls are 4, 6, 8, 10
+const cheatSequence=['tl','tr','br','bl'];
+let cheatProgress=0;let cheatTimeout=null;
+const cheatResults=[4,6,8,10];let cheatQueue=[];
+
+function getCorner(e){
+  const w=window.innerWidth,h=window.innerHeight;
+  const x=e.clientX||e.changedTouches?.[0]?.clientX||0;
+  const y=e.clientY||e.changedTouches?.[0]?.clientY||0;
+  const margin=80;
+  if(x<margin&&y<margin)return 'tl';
+  if(x>w-margin&&y<margin)return 'tr';
+  if(x>w-margin&&y>h-margin)return 'br';
+  if(x<margin&&y>h-margin)return 'bl';
+  return null;
+}
+
+function checkCheat(e){
+  const corner=getCorner(e);
+  if(!corner){cheatProgress=0;return false}
+  if(corner===cheatSequence[cheatProgress]){
+    cheatProgress++;
+    clearTimeout(cheatTimeout);
+    cheatTimeout=setTimeout(()=>{cheatProgress=0},2000);
+    if(cheatProgress===4){
+      cheatProgress=0;
+      cheatQueue=[...cheatResults];
+      if(navigator.vibrate)navigator.vibrate([30,30,30]);
+      return true; // consumed as activation tap, don't roll
+    }
+    return true; // consumed as part of sequence
+  }else{
+    cheatProgress=0;return false;
+  }
+}
+
 // Init dice
 function createDice(){
   const area=document.getElementById('diceArea');
@@ -184,8 +220,19 @@ function roll(){
     flicks++;
     if(flicks>8){
       clearInterval(flickInterval);
-      const vals=[];
-      dice.forEach(d=>{const v=Math.ceil(Math.random()*6);vals.push(v);setDie(d,v);d.classList.remove('rolling')});
+      let vals=[];
+      const rigged=cheatQueue.length>0?cheatQueue.shift():null;
+      if(rigged!==null){
+        // Distribute rigged sum across dice naturally
+        let remain=rigged;
+        for(let i=0;i<numDice;i++){
+          if(i===numDice-1){vals.push(Math.max(1,Math.min(6,remain)))}
+          else{const max=Math.min(6,remain-(numDice-i-1));const min=Math.max(1,remain-6*(numDice-i-1));const v=min+Math.floor(Math.random()*(max-min+1));vals.push(v);remain-=v}
+        }
+      }else{
+        for(let i=0;i<numDice;i++)vals.push(Math.ceil(Math.random()*6));
+      }
+      dice.forEach((d,i)=>{setDie(d,vals[i]);d.classList.remove('rolling')});
       const s=vals.reduce((a,b)=>a+b,0);
       document.getElementById('sum').textContent=s;
       const entry={vals:[...vals],sum:s,time:new Date()};
@@ -243,9 +290,10 @@ document.getElementById('workerToggle').onclick=(e)=>{
   document.getElementById('workerToggle').classList.toggle('active',showWorker);
 };
 
-// Roll on tap
+// Roll on tap (with cheat detection)
 document.getElementById('diceTab').addEventListener('click',(e)=>{
   if(e.target.closest('.dice-controls')||e.target.closest('.music-btn')||e.target.closest('.worker-toggle'))return;
+  if(checkCheat(e))return; // corner tap consumed
   roll();
 });
 
